@@ -1,0 +1,95 @@
+连接mysql
+#测试MySQL连接
+sqoop list-databases --connect jdbc:mysql://10.8.111.192/test --username root -P
+
+导入到hdfs
+#创建工作目录,生成相应的jar包
+mkdir -p /opt/tmp
+#创建链接目录
+mkdir -p /opt/tmp/libjars
+#如果目录文件夹存在,删除
+hadoop fs  -rm -r /user/sqoop/employee
+#到工作目录下
+cd /opt/tmp
+#导入
+sqoop import --bindir ./ --connect jdbc:mysql://10.8.111.192/test?useSSL=false --username root -P --table employee \
+--target-dir /user/sqoop/employee --m 1
+#参数说明
+--table:指定要导出的表
+--target-dir:导入到hdfs上的目录.会自动创建,如果预先存在会报错.
+--delete-target-dir:如果目标目录存在,删除
+
+#查看
+hdfs dfs -ls /user/sqoop/employee
+----
+/user/sqoop/employee/_SUCCESS
+/user/sqoop/employee/part-m-00000
+====
+-m 表示启动几个map任务来读取数据 
+如果数据库中的表没有主键这个参数是必须设置的而且只能设定为1 否则会报错
+而这个参数的设置值会直接决定导入的文件在hdfs上面是分成几块的. 
+比如:设置为1 则会产生一个数据文件.
+
+如果原表有主键,且主键是数字类型可以用 --m 5
+如果主键是字符串,则需
+sqoop import -Dorg.apache.sqoop.splitter.allow_text_splitter=true --bindir ./ \
+--connect jdbc:mysql://10.8.111.192/test?useSSL=false --username root -P --table employee --target-dir /user/sqoop/employee --m 5
+----
+/user/sqoop/employee/_SUCCESS
+/user/sqoop/employee/part-m-00000
+/user/sqoop/employee/part-m-00001
+/user/sqoop/employee/part-m-00002
+/user/sqoop/employee/part-m-00003
+/user/sqoop/employee/part-m-00004
+====
+
+遇到问题:
+Class employee not found
+生成的java文件会默认产生在当前目录下，而产生的.jar文件和.class文件会默认存放在/tmp/sqoop-/compile下，两者不在同一文件目录下，导致错误。
+所以，我们需要将java文件，.jar文件和.class文件放在同一目录下。
+需要用--bindir绑定工作目录
+
+
+sqoop 增量导入hdfs
+
+#查看
+hadoop fs -ls /user/sqoop/employee/
+----
+/user/sqoop/employee/_SUCCESS
+/user/sqoop/employee/part-m-00000
+====
+hadoop fs -cat /user/sqoop/employee/part-m-00000
+
+#插入数据
+insert into employee values(12158,'1959-07-26','Theirry','Masada','M','1996-02-11');
+
+select * from employee;
+
+#增量导入
+sqoop import  --bindir ./ --connect jdbc:mysql://10.8.111.192/test?useSSL=false --username root -P --table employee  -m 1 --target-dir /user/sqoop/employee --incremental append --check-column employee_id --last-value "11000"
+
+--check-column:用来作为判断的列名，如id
+--last-value:指定自从上次导入后列的最大值（大于该指定的值）
+--incremental:
+    append：追加，比如对大于last-value指定的值之后的记录进行追加导入。
+    lastmodified：最后的修改时间，追加last-value指定的日期之后的记录
+
+#查看
+hadoop fs -ls /user/sqoop/employee/
+----
+/user/sqoop/employee/_SUCCESS
+/user/sqoop/employee/part-m-00000
+/user/sqoop/employee/part-m-00001
+====
+hadoop fs -cat /user/sqoop/employee/part-m-00001
+----
+12158,1959-07-26,Theirry,Masada,M,1996-02-11
+====
+
+用--incremental lastmodified遇到:
+Import failed: --merge-key or --append is required when using --incremental lastmodified and the output directory exists.
+加上参数 --merge-key 或者用--incremental append
+
+Column type is neither timestamp nor date!
+用--incremental append
+lastmodified：最后的修改时间，追加last-value指定的日期之后的记录

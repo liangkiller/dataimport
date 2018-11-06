@@ -1,0 +1,27 @@
+前期准备同 sqoop导入hdfs.
+
+新建hbase表
+hbase shell
+>create 'employee', 'info'
+
+sqoop import --bindir ./ --connect jdbc:mysql://10.8.111.192/test?useSSL=false --username root -P --table employee \
+--hbase-table employee --hbase-row-key employee_id --column-family info -m 1
+
+--hbase-table:指定要导入的hbase表
+--hbase-row-key:作为rowkey的字段.指定了HBase的Rowkey后，再次执行导入,相同的Rowkey值，相应的行会进行更新替换。
+--column-family:导入的列族
+--hbase-create-table:创建缺失的表
+--split-by:分割的列.分成-m 指定的块.
+
+查看
+>scan 'employee'
+
+
+遇到问题:
+java.lang.NoSuchMethodError: org.apache.hadoop.hbase.client.HBaseAdmin.<init>(Lorg/apache/hadoop/conf/Configuration;)V
+方法一 : hbase-2.0.0版本不匹配,换hbase-1.4.4
+方法二: 跳过Sqoop的HBase建表方法，手动建表
+
+org.apache.hadoop.hbase.client.RetriesExhaustedWithDetailsException: 
+Failed 5005 actions: employee: 5005 times, servers with issues: null
+没有创建表

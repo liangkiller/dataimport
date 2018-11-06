@@ -1,0 +1,50 @@
+sqoop导入hive
+
+前期准备同 sqoop导入hdfs.
+hive> drop table employee;
+hadoop fs -ls /opt/hive/warehouse/
+hadoop fs -rm -r /opt/hive/warehouse/employee
+sqoop import --bindir ./ --connect jdbc:mysql://10.8.111.192/test?useSSL=false --username root -P \
+--table employee --hive-import --create-hive-table --target-dir /opt/hive/warehouse/employee --hive-table employee -m 1
+
+hive> select * from employee limit 10;
+
+--create-hive-table:默认是false，如果目标表已经存在了，那么创建任务会失败
+--hive-import:导入到hive,按默认分隔符.
+--hive-table:导入表名
+--target-dir:导入表的目录
+
+Hive表结构中的数据类型与MySQL对应列有如下关系
+MySQL(bigint) --> Hive(bigint)
+MySQL(tinyint) --> Hive(tinyint)
+MySQL(int) --> Hive(int)
+MySQL(double) --> Hive(double)
+MySQL(bit) --> Hive(boolean)
+MySQL(varchar) --> Hive(string)
+MySQL(decimal) --> Hive(double)
+MySQL(date/timestamp) --> Hive(string)
+
+遇到问题:
+Import failed: No primary key could be found for table employee. 
+Please specify one with --split-by or perform a sequential import with '-m 1'
+没有主键只能加 -m 1
+
+Could not load org.apache.hadoop.hive.conf.HiveConf. Make sure HIVE_CONF_DIR is set correctly.
+环境变量里加:
+echo 'export HADOOP_CLASSPATH=$HADOOP_CLASSPATH:$HIVE_HOME/lib/*' >> /etc/profile.d/sqoop.sh
+
+Could not register mbeans java.security.AccessControlException: 
+access denied ("javax.management.MBeanTrustPermission" "register")
+vi $JAVA_HOME/jre/lib/security/java.policy
+----
+permission javax.management.MBeanTrustPermission "register";
+====
+
+access denied org.apache.derby.security.SystemPermission( "engine", "usederbyinternals" )
+vi $JAVA_HOME/jre/lib/security/java.policy
+----
+permission org.apache.derby.security.SystemPermission "engine", "usederbyinternals";
+====
+
+Another instance of Derby may have already booted the database /opt/hive/metastore_db
+退出hive shell

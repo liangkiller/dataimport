@@ -1,0 +1,46 @@
+下载解压
+https://mirrors.tuna.tsinghua.edu.cn/apache/sqoop/
+下载sqoop-1.99.7-bin-hadoop200.tar.gz(为sqoop2)
+下载 sqoop-1.4.7.bin__hadoop-2.6.0.tar.gz
+tar -xf sqoop-1.4.7.bin__hadoop-2.6.0.tar.gz
+mv sqoop-1.4.7.bin__hadoop-2.6.0 /usr/local/sqoop
+环境变量配置
+
+echo 'export SQOOP_HOME=/usr/local/sqoop' > /etc/profile.d/sqoop.sh
+echo 'export HADOOP_CLASSPATH=$HADOOP_CLASSPATH:$HIVE_HOME/lib/*' >> /etc/profile.d/sqoop.sh
+vi /etc/profile.d/path.sh
+----
+export PATH=$PATH:$SQOOP_HOME/bin
+====
+source /etc/profile
+
+sqoop配置
+vi $SQOOP_HOME/conf/sqoop-env.sh
+----
+# Hadoop
+export HADOOP_HOME=/usr/local/hadoop
+export HADOOP_COMMON_HOME=${HADOOP_HOME}
+export HADOOP_HDFS_HOME=${HADOOP_HOME}
+export HADOOP_MAPRED_HOME=${HADOOP_HOME}
+export HADOOP_YARN_HOME=${HADOOP_HOME}
+# Native Path
+export HADOOP_COMMON_LIB_NATIVE_DIR=${HADOOP_HOME}/lib/native
+export HADOOP_OPTS="-Djava.library.path=$HADOOP_HOME/lib/native"
+
+#Hive
+export HIVE_HOME=/usr/local/hive
+
+#HBase
+export HBASE_HOME=/usr/local/hbase
+====
+hadoop需要启动hdfs,yarn.
+
+通过jdbc连接mysql
+从 http://www.mysql.com/downloads/connector/j/5.1.html下载
+#解压
+tar zxf mysql-connector-java-5.1.46.tar.gz
+cd mysql-connector-java-5.1.46
+cp mysql-connector-java-5.1.46-bin.jar $SQOOP_HOME/lib/mysql-connector-java.jar
+
+测试
+sqoop list-databases --connect jdbc:mysql://ip:port/test --username root -P
